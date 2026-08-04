@@ -48,12 +48,14 @@ export function usePrintData(): PrintData {
   const load = useCallback(async () => {
     try {
       const res = await fetch("/api/print-jobs", { cache: "no-store" });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = (await res.json()) as {
         jobs: PrintJob[];
         source: "sheets" | "fallback";
         error?: string;
       };
+      if (!res.ok) {
+        throw new Error(data.error || `HTTP ${res.status}`);
+      }
       if (data.error) throw new Error(data.error);
       const jobs = data.jobs ?? [];
       setState({

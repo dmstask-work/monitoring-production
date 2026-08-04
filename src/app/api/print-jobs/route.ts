@@ -4,22 +4,10 @@ import type { PrintJob } from "@/lib/data";
 
 // ---------------------------------------------------------------------------
 // Server-side data loader for the dashboard.
-// Always fetches the live Google Sheet, caches it in memory, and never falls
-// back to the bundled CSV. This removes the slow browser->Google round-trip
-// from every page load.
+// Always fetches the live Google Sheet (URL from env var) — no CSV fallback.
 // ---------------------------------------------------------------------------
 
-function getSheetCsvUrl(): string {
-  const url = process.env.GOOGLE_SHEET_CSV_URL;
-  if (!url) {
-    throw new Error("GOOGLE_SHEET_CSV_URL environment variable is not set");
-  }
-  return url;
-}
-
-const SHEET_CSV_URL = getSheetCsvUrl();
-
-const FETCH_TIMEOUT_MS = 5000;
+const FETCH_TIMEOUT_MS = 15000; // 15 seconds — Google Sheets export can be slow
 
 const COLUMN_MAP: Record<string, keyof PrintJob> = {
   "SO Fisik Masuk PPIC": "soFisikMasukPpic",
@@ -118,7 +106,7 @@ async function fetchWithTimeout(url: string, timeoutMs: number): Promise<string>
       cache: "no-store",
       signal: controller.signal,
     });
-    if (!res.ok) throw new Error(`Failed to fetch ${url}: ${res.status}`);
+    if (!res.ok) throw new Error(`Google Sheets returned HTTP ${res.status}`);
     return await res.text();
   } finally {
     clearTimeout(timeout);
@@ -140,8 +128,14 @@ async function loadJobs(): Promise<{
     return { jobs: cache.jobs, source: cache.source };
   }
 
-  // Always use the live Google Sheet — no CSV fallback.
-  const csvText = await fetchWithTimeout(SHEET_CSV_URL, FETCH_TIMEOUT_MS);
+  // Read the env var here (at runtime), not at module load, so the route
+  // doesn't crash if the env var is missing at startup.
+  const sheetUrl = process.env.GOOGLE_SHEET_CSV_URL;
+  if (!sheetUrl) {
+    throw new Error("GOOGLE_SHEET_CSV_URL environment variable is not set");
+  }
+
+  const csvText = await fetchWithTimeout(sheetUrl, FETCH_TIMEOUT_MS);
   const jobs = parseCsv(csvText);
   if (jobs.length === 0) {
     throw new Error("Google Sheet kosong atau gagal di-parse");
@@ -155,6 +149,7 @@ export async function GET() {
     const { jobs, source } = await loadJobs();
     return NextResponse.json({ jobs, source });
   } catch (err) {
+    console.error("[print-jobs] Error:", err instanceof Error ? err.message : err);
     return NextResponse.json(
       {
         error: err instanceof Error ? err.message : "Gagal memuat data",
