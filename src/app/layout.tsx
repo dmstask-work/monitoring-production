@@ -18,7 +18,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} antialiased`}>
       <body className={inter.className}>
-        <ThemeProvider defaultTheme="system" storageKey="nextjs-ui-theme">
+        <ThemeProvider defaultTheme="light" storageKey="nextjs-ui-theme">
           <SidebarConfigProvider>
             {children}
           </SidebarConfigProvider>
