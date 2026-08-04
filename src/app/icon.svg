@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="6" fill="#ef4444"/>
+  <text
+    x="50%" y="50%" dy=".1em"
+    fill="#ffffff"
+    fontSize="20px"
+    fontFamily="system-ui, -apple-system, sans-serif"
+    fontWeight="800"
+    textAnchor="middle"
+    dominantBaseline="middle"
+  >IG</text>
+</svg>

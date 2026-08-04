@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: ig-dashboard
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /dashboard
+    envVars:
+      - key: GOOGLE_SHEET_CSV_URL
+        sync: false
