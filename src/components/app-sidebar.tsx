@@ -3,7 +3,10 @@
 import * as React from "react"
 import {
   LayoutDashboard,
-  Printer,
+  Scissors,
+  Download,
+  FileText,
+  FileSpreadsheet,
 } from "lucide-react"
 import Link from "next/link"
 import { Logo } from "@/components/logo"
@@ -17,7 +20,18 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarSeparator,
 } from "@/components/ui/sidebar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 const data = {
   appName: "IG Dashboard",
@@ -31,14 +45,25 @@ const data = {
           icon: LayoutDashboard,
         },
         {
-          title: "Data Cetak (CSV)",
-          // url: "/data/data_produksi_cetak.csv",
-          url: "/src/app/not-found.tsx",
-          icon: Printer,
+          title: "Finishing",
+          url: "/finishing",
+          icon: Scissors,
         },
       ],
     },
   ],
+}
+
+function downloadCSV(filename: string) {
+  // fetches CSV from public folder
+  const a = document.createElement("a")
+  a.href = "/data/data_produksi_cetak.csv"
+  a.download = filename
+  a.click()
+}
+
+function downloadPDF() {
+  window.print()
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -65,6 +90,37 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         {data.navGroups.map((group) => (
           <NavMain key={group.label} label={group.label} items={group.items} />
         ))}
+
+        {/* Download section */}
+        <SidebarSeparator />
+        <SidebarGroup>
+          <SidebarGroupLabel>Laporan</SidebarGroupLabel>
+          <SidebarMenu>
+            <SidebarMenuItem>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <SidebarMenuButton tooltip="Unduh Laporan" className="cursor-pointer">
+                  <Download />
+                  <span>Unduh Laporan</span>
+                </SidebarMenuButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent side="right" align="end" className="w-52">
+                <DropdownMenuLabel>Pilih Format &amp; Laporan</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => downloadCSV("data-produksi-cetak.csv")}>
+                  <FileSpreadsheet className="mr-2 size-4" />
+                  CSV - Data Cetak
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={downloadPDF}>
+                  <FileText className="mr-2 size-4" />
+                  PDF - Cetak Halaman
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </SidebarMenuItem>
+        </SidebarMenu>
+        </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
         <div className="px-4 py-3 text-xs text-muted-foreground">

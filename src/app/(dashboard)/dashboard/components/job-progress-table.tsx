@@ -19,7 +19,25 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { DataTable } from "@/components/data-table"
-import { formatDate, getStage, type PrintJob, type ProcessStage } from "@/lib/data"
+import { formatDate, getStage, parseDate, type PrintJob, type ProcessStage } from "@/lib/data"
+
+function daysUntil(dateStr: string): number | null {
+  const d = parseDate(dateStr)
+  if (!d) return null
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  d.setHours(0, 0, 0, 0)
+  return Math.floor((d.getTime() - today.getTime()) / 86_400_000)
+}
+
+function getScheduleRowClass(row: Row): string {
+  if (row.stage === "Selesai") return ""
+  const days = daysUntil(row.jadwalCetak)
+  if (days === null) return ""
+  if (days <= 0) return "bg-red-50 dark:bg-red-950/30"
+  if (days === 1) return "bg-yellow-50 dark:bg-yellow-950/30"
+  return ""
+}
 
 const STAGE_STYLES: Record<ProcessStage, string> = {
   "SO Masuk": "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
@@ -57,6 +75,16 @@ export function JobProgressTable({ jobs }: { jobs: PrintJob[] }) {
         stage: getStage(job).stage,
       })),
     [jobs]
+  )
+
+  // Counts computed from all unfiltered rows for the alert bar
+  const overdueCount = React.useMemo(
+    () => rows.filter((r) => r.stage !== "Selesai" && (daysUntil(r.jadwalCetak) ?? 1) <= 0).length,
+    [rows]
+  )
+  const warningCount = React.useMemo(
+    () => rows.filter((r) => r.stage !== "Selesai" && daysUntil(r.jadwalCetak) === 1).length,
+    [rows]
   )
 
   // Distinct mesin values for the filter dropdown
@@ -209,13 +237,36 @@ export function JobProgressTable({ jobs }: { jobs: PrintJob[] }) {
           Status proses setiap job dari SO masuk hingga cetak selesai
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
+        {(overdueCount > 0 || warningCount > 0) && (
+          <div className="flex flex-wrap gap-2">
+            {overdueCount > 0 && (
+              <div className="flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm dark:border-red-800 dark:bg-red-950/30">
+                <span className="size-2 rounded-full bg-red-500" />
+                <span className="font-medium text-red-700 dark:text-red-400">
+                  {overdueCount} job terlambat
+                </span>
+                <span className="text-red-600/70 dark:text-red-400/70">- jadwal cetak sudah lewat</span>
+              </div>
+            )}
+            {warningCount > 0 && (
+              <div className="flex items-center gap-2 rounded-md border border-yellow-200 bg-yellow-50 px-3 py-2 text-sm dark:border-yellow-800 dark:bg-yellow-950/30">
+                <span className="size-2 rounded-full bg-yellow-500" />
+                <span className="font-medium text-yellow-700 dark:text-yellow-400">
+                  {warningCount} job peringatan
+                </span>
+                <span className="text-yellow-600/70 dark:text-yellow-400/70">- jadwal cetak besok</span>
+              </div>
+            )}
+          </div>
+        )}
         <DataTable
           columns={columns}
           data={filtered}
           searchPlaceholder="Cari No SO, Customer, Pekerjaan, Mesin..."
           emptyMessage="Tidak ada data yang cocok."
           toolbar={toolbar}
+          getRowClassName={getScheduleRowClass}
         />
       </CardContent>
     </Card>

@@ -9,7 +9,6 @@ import { CalendarIcon, X } from "lucide-react"
 import { usePrintData } from "@/hooks/use-print-data"
 import { KpiCards } from "./components/kpi-cards"
 import { JobProgressTable } from "./components/job-progress-table"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   Popover,
@@ -46,9 +45,12 @@ const OperatorAnalysis = dynamic(
 
 export default function Page() {
   const { jobs, source, loading, error } = usePrintData()
-  const [dateRange, setDateRange] = React.useState<DateRange>({
-    from: undefined,
-    to: undefined,
+  const [dateRange, setDateRange] = React.useState<DateRange>(() => {
+    const now = new Date()
+    return {
+      from: new Date(now.getFullYear(), now.getMonth(), 1),
+      to: new Date(now.getFullYear(), now.getMonth() + 1, 0),
+    }
   })
 
   // Filter jobs by Tgl Cetak within the selected date range.
@@ -109,7 +111,7 @@ export default function Page() {
       <div className="px-4 lg:px-6">
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight">Dashboard Produksi Cetak</h1>
+            <h1 className="text-2xl font-bold tracking-tight">Dashboard Monitoring Produksi</h1>
             {/* <Badge variant="outline">
               {source === "sheets" ? "Live Google Sheets" : "Data CSV (fallback)"}
             </Badge> */}
@@ -129,7 +131,7 @@ export default function Page() {
                       format(dateRange.from, "dd MMM yyyy")
                     )
                   ) : (
-                    "Filter Tanggal Cetak"
+                    "Filter by Tanggal"
                   )}
                 </Button>
               </PopoverTrigger>

@@ -47,6 +47,7 @@ interface DataTableProps<TData, TValue> {
   searchPlaceholder?: string
   emptyMessage?: string
   toolbar?: React.ReactNode
+  getRowClassName?: (row: TData) => string
 }
 
 /**
@@ -62,6 +63,7 @@ export function DataTable<TData, TValue>({
   searchPlaceholder = "Cari...",
   emptyMessage = "Tidak ada data.",
   toolbar,
+  getRowClassName,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
@@ -171,7 +173,11 @@ export function DataTable<TData, TValue>({
           <TableBody>
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && "selected"}
+                  className={getRowClassName ? getRowClassName(row.original) : undefined}
+                >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
