@@ -30,12 +30,21 @@ function daysUntil(dateStr: string): number | null {
   return Math.floor((d.getTime() - today.getTime()) / 86_400_000)
 }
 
-function getScheduleRowClass(row: Row): string {
-  if (row.stage === "Selesai") return ""
+function isOverdue(row: Row): boolean {
+  if (row.stage === "Selesai") return false
   const days = daysUntil(row.jadwalCetak)
-  if (days === null) return ""
-  if (days <= 0) return "bg-red-50 dark:bg-red-950/30"
-  if (days === 1) return "bg-yellow-50 dark:bg-yellow-950/30"
+  if (days === null) return false
+  return days <= 0
+}
+
+function isWarning(row: Row): boolean {
+  if (row.stage === "Selesai") return false
+  return daysUntil(row.jadwalCetak) === 1
+}
+
+function getScheduleRowClass(row: Row): string {
+  if (isOverdue(row)) return "bg-red-50 dark:bg-red-950/30"
+  if (isWarning(row)) return "bg-yellow-50 dark:bg-yellow-950/30"
   return ""
 }
 
@@ -63,10 +72,13 @@ interface Row extends PrintJob {
   stage: ProcessStage
 }
 
+type AlertFilter = "all" | "overdue" | "warning"
+
 export function JobProgressTable({ jobs }: { jobs: PrintJob[] }) {
   const [stageFilter, setStageFilter] = React.useState<string>("all")
   const [mesinFilter, setMesinFilter] = React.useState<string>("all")
   const [statusFilter, setStatusFilter] = React.useState<string>("all")
+  const [alertFilter, setAlertFilter] = React.useState<AlertFilter>("all")
 
   const rows = React.useMemo<Row[]>(
     () =>
@@ -78,14 +90,13 @@ export function JobProgressTable({ jobs }: { jobs: PrintJob[] }) {
   )
 
   // Counts computed from all unfiltered rows for the alert bar
-  const overdueCount = React.useMemo(
-    () => rows.filter((r) => r.stage !== "Selesai" && (daysUntil(r.jadwalCetak) ?? 1) <= 0).length,
-    [rows]
-  )
-  const warningCount = React.useMemo(
-    () => rows.filter((r) => r.stage !== "Selesai" && daysUntil(r.jadwalCetak) === 1).length,
-    [rows]
-  )
+  const overdueCount = React.useMemo(() => rows.filter(isOverdue).length, [rows])
+  const warningCount = React.useMemo(() => rows.filter(isWarning).length, [rows])
+
+  // Toggle alert filter; clicking the same alert again clears the filter
+  const toggleAlertFilter = (filter: Exclude<AlertFilter, "all">) => {
+    setAlertFilter((current) => (current === filter ? "all" : filter))
+  }
 
   // Distinct mesin values for the filter dropdown
   const mesinOptions = React.useMemo(() => {
@@ -96,13 +107,15 @@ export function JobProgressTable({ jobs }: { jobs: PrintJob[] }) {
 
   const filtered = React.useMemo(() => {
     return rows.filter((j) => {
+      if (alertFilter === "overdue" && !isOverdue(j)) return false
+      if (alertFilter === "warning" && !isWarning(j)) return false
       if (stageFilter !== "all" && j.stage !== stageFilter) return false
       if (mesinFilter !== "all" && j.mesin !== mesinFilter) return false
       if (statusFilter === "selesai" && j.stage !== "Selesai") return false
       if (statusFilter === "belum" && j.stage === "Selesai") return false
       return true
     })
-  }, [rows, stageFilter, mesinFilter, statusFilter])
+  }, [rows, alertFilter, stageFilter, mesinFilter, statusFilter])
 
   const columns = React.useMemo<ColumnDef<Row>[]>(
     () => [
@@ -241,22 +254,38 @@ export function JobProgressTable({ jobs }: { jobs: PrintJob[] }) {
         {(overdueCount > 0 || warningCount > 0) && (
           <div className="flex flex-wrap gap-2">
             {overdueCount > 0 && (
-              <div className="flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm dark:border-red-800 dark:bg-red-950/30">
+              <button
+                type="button"
+                onClick={() => toggleAlertFilter("overdue")}
+                className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors ${
+                  alertFilter === "overdue"
+                    ? "border-red-500 bg-red-100 ring-2 ring-red-500/30 dark:border-red-500 dark:bg-red-900/50"
+                    : "border-red-200 bg-red-50 hover:bg-red-100 dark:border-red-800 dark:bg-red-950/30 dark:hover:bg-red-900/40"
+                }`}
+              >
                 <span className="size-2 rounded-full bg-red-500" />
                 <span className="font-medium text-red-700 dark:text-red-400">
                   {overdueCount} job terlambat
                 </span>
                 <span className="text-red-600/70 dark:text-red-400/70">- jadwal cetak sudah lewat</span>
-              </div>
+              </button>
             )}
             {warningCount > 0 && (
-              <div className="flex items-center gap-2 rounded-md border border-yellow-200 bg-yellow-50 px-3 py-2 text-sm dark:border-yellow-800 dark:bg-yellow-950/30">
+              <button
+                type="button"
+                onClick={() => toggleAlertFilter("warning")}
+                className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors ${
+                  alertFilter === "warning"
+                    ? "border-yellow-500 bg-yellow-100 ring-2 ring-yellow-500/30 dark:border-yellow-500 dark:bg-yellow-900/50"
+                    : "border-yellow-200 bg-yellow-50 hover:bg-yellow-100 dark:border-yellow-800 dark:bg-yellow-950/30 dark:hover:bg-yellow-900/40"
+                }`}
+              >
                 <span className="size-2 rounded-full bg-yellow-500" />
                 <span className="font-medium text-yellow-700 dark:text-yellow-400">
                   {warningCount} job peringatan
                 </span>
                 <span className="text-yellow-600/70 dark:text-yellow-400/70">- jadwal cetak besok</span>
-              </div>
+              </button>
             )}
           </div>
         )}
